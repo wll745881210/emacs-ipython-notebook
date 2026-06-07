@@ -1,0 +1,15 @@
+doc/build/
+.cask/*
+*.pyc
+*.elc
+log/*
+*.zip
+.gitattributes
+.ecukes*
+dist
+.*ein*ipynb
+.Rhistory
+.ipynb_checkpoints
+ein-autoloads.el
+ert-profile
+ein-images
