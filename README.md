@@ -5,7 +5,7 @@
 
 [Jupyter](http://jupyter.org) client for Emacs. Supports new (>= 7.0) Jupyter kernels.
 
-This is a fork of [dickmao/emacs-ipython-notebook](https://github.com/dickmao/emacs-ipython-notebook) with patches for **Jupyter Server >= 2.x (and the modern `jupyter server` CLI)**. The upstream EIN package v20250307.1731 is no longer maintained for modern Jupyter, and many core features (login, version detection, undo, session creation) silently break on a current Jupyter install. This fork attempts to restore its usability.
+This is a fork of [millejoh/emacs-ipython-notebook](https://github.com/millejoh/emacs-ipython-notebook) with patches for **Jupyter Server >= 2.x (and the modern `jupyter server` CLI)**. The upstream EIN package v20250307.1731 is no longer maintained for modern Jupyter, and many core features (login, version detection, undo, session creation) silently break on a current Jupyter install. This fork attempts to restore its usability.
 
 These patches and fixes are composed by OpenCode with MiniMax V3 . 
 
