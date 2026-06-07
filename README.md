@@ -1,25 +1,28 @@
 # EIN -- Emacs IPython Notebook (Jupyter 7.x fork)
 
-[![build-status](https://github.com/millejoh/emacs-ipython-notebook/workflows/CI/badge.svg)](https://github.com/millejoh/emacs-ipython-notebook/actions)
-[![melpa-dev](https://melpa.org/packages/ein-badge.svg)](http://melpa.org/#/ein)
+<!-- [![build-status](https://github.com/millejoh/emacs-ipython-notebook/workflows/CI/badge.svg)](https://github.com/millejoh/emacs-ipython-notebook/actions)
+[![melpa-dev](https://melpa.org/packages/ein-badge.svg)](http://melpa.org/#/ein) -->
 
-[Jupyter](http://jupyter.org) client for Emacs. Supports all Jupyter kernels.
+[Jupyter](http://jupyter.org) client for Emacs. Supports new (>= 7.0) Jupyter kernels.
 
-This is a fork of [dickmao/emacs-ipython-notebook](https://github.com/dickmao/emacs-ipython-notebook) with patches for **Jupyter Server >= 2.x (and the modern `jupyter server` CLI)**. The upstream EIN package v20250307.1731 is no longer maintained for modern Jupyter, and many core features (login, version detection, undo, session creation) silently break on a current Jupyter install. This fork restores usability.
+This is a fork of [dickmao/emacs-ipython-notebook](https://github.com/dickmao/emacs-ipython-notebook) with patches for **Jupyter Server >= 2.x (and the modern `jupyter server` CLI)**. The upstream EIN package v20250307.1731 is no longer maintained for modern Jupyter, and many core features (login, version detection, undo, session creation) silently break on a current Jupyter install. This fork attempts to restore its usability.
+
+These patches and fixes are composed by OpenCode with MiniMax V3 . 
+
+Still, many thanks to the original repo:
+https://github.com/tkf/emacs-ipython-notebook ,
+who stopped updating EIN in the year 2012 when I had already started using it, and 
+https://github.com/millejoh/emacs-ipython-notebook , 
+who took over the maintainance of EIN and contributed to this package a lot over the years. 
+
+In the current age of AI-based coding, EIN could still be useful, as various jobs still rely on .ipynb, ranging from data reduction for astrophysics, to constructing an artificial neural network with PyTorch. The importance of EIN for emacs-centered users can never be overestimated.
 
 ## Install
+This repo is not on MELPA yet, so just download it, install all dependencies using the instructions in the original repo (https://github.com/millejoh/emacs-ipython-notebook), and require the ein.el in your emacs config files.
 
-Either install from MELPA (which will track the upstream, unfixed version) or clone this repo:
+Or the lazy way: Install the latest EIN in MELPA, then replace all .el files in the ein directory (e.g., ~/.emacs.d/elpa/ein-2025XXXX.XXX) with the ones in the lisp/ sub-directory of this current repo. 
 
-```sh
-git clone https://github.com/<your-fork>/emacs-ipython-notebook.git
-cd emacs-ipython-notebook
-make install
-```
-
-Or load the `lisp/*.el` files directly from your init file.
-
-## What this fork fixes
+## What this fork tries to fix
 
 ### 1. Version detection for Jupyter Server (no more `api/spec.yaml`)
 
@@ -74,8 +77,6 @@ If you launch Jupyter with `c.ServerApp.token = ''` (no auth), you may also want
 Otherwise, even though the login path no longer requires the crib, the "default kernel" crib (`ein:jupyter-default-kernel`) and the "running servers" crib still shell out and will warn `cannot find jupyter`.
 
 ## Known issues
-
-- **Broken symlinks**: Jupyter Server's `fileio.py` returns `400 Cannot read non-file` for broken symlinks. EIN faithfully forwards the error. Fix the symlink on disk.
 - **Polymode compatibility** with newer `polymode` releases is not guaranteed; this fork does not change polymode usage.
 
 ## License
