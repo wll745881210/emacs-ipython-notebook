@@ -7,9 +7,9 @@
 
 This is a fork of [millejoh/emacs-ipython-notebook](https://github.com/millejoh/emacs-ipython-notebook) with patches for **Jupyter Server >= 2.x (and the modern `jupyter server` CLI)**. The upstream EIN package v20250307.1731 is no longer maintained for modern Jupyter, and many core features (login, version detection, undo, session creation) silently break on a current Jupyter install. This fork attempts to restore its usability.
 
-These patches and fixes are composed by OpenCode with MiniMax V3 . 
+These patches and fixes are composed by OpenCode with MiniMax M3 and DeepSeek V4 Flash. 
 
-Still, many thanks to the original repo:
+Many thanks to the original repo:
 https://github.com/tkf/emacs-ipython-notebook ,
 who stopped updating EIN in the year 2012 when I had already started using it, and 
 https://github.com/millejoh/emacs-ipython-notebook , 
