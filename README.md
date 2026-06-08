@@ -21,11 +21,11 @@ In the current age of AI-based coding, EIN could still be useful, as various job
 This repo is not on MELPA yet, so just download it, install all dependencies using the instructions in the original repo (https://github.com/millejoh/emacs-ipython-notebook), and include these in your emacs configuration file:
 
 ```elisp
-(add-to-list 'load-path "/path/to/ein")
+(add-to-list 'load-path "/path/to/ein/lisp")
 (require 'ein)
 ```
 
-Or the lazy way: Install the latest EIN in MELPA, then replace all .el files in the ein directory (e.g., ~/.emacs.d/elpa/ein-2025XXXX.XXX) with the ones in the lisp/ sub-directory of this current repo. 
+Or the lazy way: Install the latest EIN in MELPA, then replace all .el files in the ein directory (e.g., ~/.emacs.d/elpa/ein-2025XXXX.XXX) with the ones in the lisp/ sub-directory of this current repo. You will also need to copy `lisp/ein-autoloads.el` (this fork ships a fresh autoloads file) or regenerate it via `M-x update-directory-autoloads`. 
 
 ## What this fork tries to fix
 
@@ -91,7 +91,7 @@ If you launch Jupyter with `c.ServerApp.token = ''` (no auth), you may also want
 Otherwise, even though the login path no longer requires the crib, the "default kernel" crib (`ein:jupyter-default-kernel`) and the "running servers" crib still shell out and will warn `cannot find jupyter`.
 
 ## Known issues
-- **Polymode compatibility** with newer `polymode` releases is not guaranteed; this fork does not change polymode usage.
+- **Autoloads**: `ein-autoloads.el` ships pre-generated. If you modify `;;;###autoload` cookies, regenerate via `M-x package-generate-autoloads RET /path/to/ein/lisp RET`.
 
 ## License
 

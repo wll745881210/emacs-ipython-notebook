@@ -27,7 +27,8 @@ EIN is an Emacs Lisp Jupyter notebook client (Emacs 26.1+, GPLv3). Uses EIEIO (E
 
 | File | Role |
 |------|------|
-| `ein.el` | Entry point, package metadata, minor-mode definitions |
+| `ein.el` | Entry point — loads `ein-autoloads.el` after `(provide 'ein)`, then requires core modules (circular-dep safe) |
+| `ein-autoloads.el` | Generated autoloads (503 lines) — regenerate via `package-generate-autoloads` when autoload cookies change |
 | `ein-classes.el` | EIEIO structs: `ein:$notebook`, `ein:basecell`/`ein:codecell`/`ein:textcell`, `ein:$kernel`, `ein:$kernelspec` |
 | `ein-query.el` | HTTP layer via `request.el`. **Version detection** (patched: `/api/status` before `api/spec.yaml`) |
 | `ein-kernel.el` | Kernel lifecycle, session POST, WS connect, message dispatch. **Protocol 5.3** |
@@ -40,7 +41,7 @@ EIN is an Emacs Lisp Jupyter notebook client (Emacs 26.1+, GPLv3). Uses EIEIO (E
 | `ein-contents-api.el` | Contents API v2 — session queries, file tree |
 | `ein-utils.el` | URL normalization, UUID generation, JSON helpers |
 | `ob-ein.el` | Org-babel integration |
-| `poly-ein.el` | Polymode integration |
+| `poly-ein.el` | Polymode integration — **patched** (`pm--visible-buffer-name` → `(buffer-name)` for polymode >= 20260505) |
 
 ### Key Dependencies
 
