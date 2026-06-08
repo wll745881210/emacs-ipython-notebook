@@ -52,4 +52,19 @@
 
 (provide 'ein)
 
+;; Load autoloads for lazy command discovery.  Autoloads are generated
+;; from ;;;###autoload cookies by: make autoloads (via cask) or
+;; M-x package-generate-autoloads.  The (t t) args silently skip if
+;; the file does not exist (e.g. MELPA installs handle autoloads via
+;; package.el instead).
+(load "ein-autoloads" t t)
+
+;; Load main entry-point files after provide to avoid circular
+;; require: ein-core.el → ein, and various files → ein-core.
+(require 'ein-notebooklist)
+(require 'ein-notebook)
+(require 'ein-kernel)
+(require 'ein-worksheet)
+(require 'ein-jupyter)
+
 ;;; ein.el ends here

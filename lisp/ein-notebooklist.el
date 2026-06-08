@@ -605,7 +605,7 @@ See `ein:format-time-string'."
 (defun render-running-notebooks (url-or-port sessions)
   (with-current-buffer (ein:notebooklist-get-buffer url-or-port)
     (when (> (hash-table-count sessions) 0)
-      (widget-insert "\n=== Running Notebooks ===\n\n")
+      (widget-insert "\n=== Running Notebooks ===\n")
       (maphash
        (lambda (path session-kernel)
          (let* ((session-id (car session-kernel))
@@ -653,9 +653,11 @@ See `ein:format-time-string'."
               "Switch")
              (widget-insert " "))
            (widget-insert (format ": %s | %s [%s]\n" path display-name (or execution-state "?")))))
-       sessions))))
-
-(defun ein:notebooklist-render (url-or-port restore-point sessions)
+       sessions))
+      (widget-insert "\n=== Current Directory ===\n")        
+      ))
+ 
+ (defun ein:notebooklist-render (url-or-port restore-point sessions)
   (with-current-buffer (ein:notebooklist-get-buffer url-or-port)
     (if (not (ein:$notebooklist-path ein:%notebooklist%))
         (ein:log 'error "ein:notebooklist-render: cannot render null")
