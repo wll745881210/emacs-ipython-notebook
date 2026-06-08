@@ -600,13 +600,67 @@ See `ein:format-time-string'."
                         "Delete")
                        (widget-insert " : " (ein:format-nbitem-data name last-modified))
                        (widget-insert "\n"))
-             end)))
+              end)))
+
+(defun render-running-notebooks (url-or-port sessions)
+  (with-current-buffer (ein:notebooklist-get-buffer url-or-port)
+    (when (> (hash-table-count sessions) 0)
+      (widget-insert "\n=== Running Notebooks ===\n\n")
+      (maphash
+       (lambda (path session-kernel)
+         (let* ((session-id (car session-kernel))
+                (kernel-plist (cdr session-kernel))
+                (kernel-id (plist-get kernel-plist :id))
+                (kernel-name (plist-get kernel-plist :name))
+                (execution-state (plist-get kernel-plist :execution_state))
+                (kernelspec (ein:get-kernelspec url-or-port kernel-name))
+                (display-name (if kernelspec (ein:$kernelspec-display-name kernelspec) kernel-name))
+                (locally-open (ein:notebook-get-opened-notebook url-or-port path)))
+           (widget-create
+            'link
+            :notify (apply-partially
+                     (lambda (url-or-port* path* &rest _args)
+                       (ein:notebook-open url-or-port* path*))
+                     url-or-port path)
+            "Open")
+           (widget-insert " ")
+           (widget-create
+            'link
+            :notify (apply-partially
+                     (lambda (url-or-port* path* &rest _args)
+                       (ein:message-whir "Ending session" (var callback)
+                         (ein:kernel-delete-session #'ignore
+                                                    :url-or-port url-or-port*
+                                                    :path path*)))
+                     url-or-port path)
+            "Stop")
+           (widget-insert " ")
+           (when locally-open
+             (widget-create
+              'link
+              :notify (apply-partially
+                       (lambda (notebook &rest _args)
+                         (ein:kernel-interrupt (ein:$notebook-kernel notebook)))
+                       locally-open)
+              "Interrupt")
+             (widget-insert " ")
+             (widget-create
+              'link
+              :notify (apply-partially
+                       (lambda (notebook &rest _args)
+                         (pop-to-buffer (ein:notebook-buffer notebook)))
+                       locally-open)
+              "Switch")
+             (widget-insert " "))
+           (widget-insert (format ": %s | %s [%s]\n" path display-name (or execution-state "?")))))
+       sessions))))
 
 (defun ein:notebooklist-render (url-or-port restore-point sessions)
   (with-current-buffer (ein:notebooklist-get-buffer url-or-port)
     (if (not (ein:$notebooklist-path ein:%notebooklist%))
         (ein:log 'error "ein:notebooklist-render: cannot render null")
       (render-header url-or-port sessions)
+      (render-running-notebooks url-or-port sessions)
       (render-directory url-or-port sessions)
       (widget-setup)
       (awhen (get-buffer-window (current-buffer))

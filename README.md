@@ -66,6 +66,15 @@ Modern Emacs (26+) inserts `(t . 0)` undo boundaries after every command. EIN's 
 - **File:** `lisp/ein-jupyter.el`
 - `ein:jupyter-server-use-subcommand` defaults to `"server"` (was `"notebook"`).
 
+### 6. Running Notebooks section in notebooklist
+
+Add a Running Notebooks section at the top of the notebooklist buffer (like Jupyter's Running tab) showing all active sessions. Each entry shows the notebook path, kernel display name, execution state, and action links (Open, Stop, Interrupt, Switch).
+
+- **File:** `lisp/ein-notebooklist.el`
+- New `render-running-notebooks` function renders the section using the existing sessions data from `GET /api/sessions`.
+- Works with the existing widget-based notebooklist UI.
+- Interrupt and Switch actions available only for notebooks open in Emacs.
+
 ## Configuration tips
 
 If you launch Jupyter with `c.ServerApp.token = ''` (no auth), you may also want:
