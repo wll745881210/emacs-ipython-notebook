@@ -18,7 +18,12 @@ who took over the maintainance of EIN and contributed to this package a lot over
 In the current age of AI-based coding, EIN could still be useful, as various jobs still rely on .ipynb, ranging from data reduction for astrophysics, to constructing an artificial neural network with PyTorch. The importance of EIN for emacs-centered users can never be overestimated.
 
 ## Install
-This repo is not on MELPA yet, so just download it, install all dependencies using the instructions in the original repo (https://github.com/millejoh/emacs-ipython-notebook), and require the ein.el in your emacs config files.
+This repo is not on MELPA yet, so just download it, install all dependencies using the instructions in the original repo (https://github.com/millejoh/emacs-ipython-notebook), and include these in your emacs configuration file:
+
+```elisp
+(add-to-list 'load-path "/path/to/ein")
+(require 'ein)
+```
 
 Or the lazy way: Install the latest EIN in MELPA, then replace all .el files in the ein directory (e.g., ~/.emacs.d/elpa/ein-2025XXXX.XXX) with the ones in the lisp/ sub-directory of this current repo. 
 
