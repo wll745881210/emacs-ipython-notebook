@@ -262,7 +262,8 @@ where `created' indicates a new notebook or an existing one."
           (ein:kernelinfo-new (ein:$notebook-kernel notebook)
                               (cons #'ein:notebook-buffer-list notebook)))
     (ein:notebook-put-opened-notebook notebook)
-    (ein:notebook--check-nbformat (ein:$content-raw-content content))))
+    (ein:notebook--check-nbformat (ein:$content-raw-content content))
+    (ein:notebook-auto-revert-setup notebook)))
 
 (defun ein:notebook-set-kernelspec (notebook content-metadata)
   (-when-let* ((ks-plist (plist-get content-metadata :kernelspec))
@@ -627,7 +628,8 @@ NAME is any non-empty string that does not contain '/' or '\\'.
                 (ein:notebook-tidy-opened-notebooks it))))
           buffers)
     (ein:notebook-avoid-recursion
-     (mapc (lambda (b) (ignore-errors (kill-buffer b))) buffers))))
+     (mapc (lambda (b) (ignore-errors (kill-buffer b))) buffers))
+    (ein:notebook-auto-revert-teardown notebook)))
 
 (defun ein:notebook-kill-buffer-query ()
   (if-let ((notebook (ein:get-notebook))
@@ -1005,6 +1007,88 @@ notebook code attempted to narrow-to-region, and
  #'ein:notebook-forbid-narrow-to-region)
 
 (ein:python-send--init)
+
+;;; Auto revert
+
+(defcustom ein:notebook-auto-revert t
+  "Auto-revert notebook when the corresponding file changes on disk.
+Only works for local Jupyter servers."
+  :group 'ein
+  :type 'boolean)
+
+(defcustom ein:notebook-auto-revert-delay 1.0
+  "Delay in seconds before auto-reverting after a file change."
+  :group 'ein
+  :type 'float)
+
+(defun ein:notebook-auto-revert-setup (notebook)
+  "Set up file-notify watch for NOTEBOOK served by a local Jupyter server."
+  (when ein:notebook-auto-revert
+    (let ((dir (ein:jupyter-running-notebook-directory)))
+      (when dir
+        (let ((file (expand-file-name (ein:$notebook-notebook-path notebook) dir)))
+          (when (file-exists-p file)
+            (let ((watch (file-notify-add-watch
+                          file '(change)
+                          (lambda (event)
+                            (ein:notebook-auto-revert--on-change notebook event))))
+                  (timer (ein:$notebook-auto-revert-timer notebook)))
+              (when timer (cancel-timer timer))
+              (setf (ein:$notebook-auto-revert-watch notebook) watch))))))))
+
+(defun ein:notebook-auto-revert-teardown (notebook)
+  "Remove file-notify watch and cancel timer for NOTEBOOK."
+  (let ((watch (ein:$notebook-auto-revert-watch notebook))
+        (timer (ein:$notebook-auto-revert-timer notebook)))
+    (when watch (ignore-errors (file-notify-rm-watch watch)))
+    (when timer (cancel-timer timer))
+    (setf (ein:$notebook-auto-revert-watch notebook) nil)
+    (setf (ein:$notebook-auto-revert-timer notebook) nil)))
+
+(defun ein:notebook-auto-revert--on-change (notebook _event)
+  "Debounced handler: wait `ein:notebook-auto-revert-delay' then reload."
+  (let ((timer (ein:$notebook-auto-revert-timer notebook)))
+    (when timer (cancel-timer timer)))
+  (setf (ein:$notebook-auto-revert-timer notebook)
+        (run-with-timer ein:notebook-auto-revert-delay nil
+                        #'ein:notebook-auto-revert--reload notebook)))
+
+(defun ein:notebook-auto-revert--reload (notebook)
+  "Reload NOTEBOOK from server.  Prompt if notebook is modified."
+  (when (ein:$notebook-p notebook)
+    (let ((buffer (ein:notebook-buffer notebook)))
+      (when (buffer-live-p buffer)
+        (with-current-buffer buffer
+          (when (or (not (ein:notebook-modified-p notebook))
+                    (y-or-n-p (format "Notebook %s modified. Reload from server? "
+                                      (ein:$notebook-notebook-name notebook))))
+            (ein:notebook-auto-revert--fetch notebook)))))))
+
+(defun ein:notebook-auto-revert--fetch (notebook)
+  (ein:content-query-contents
+   (ein:$notebook-url-or-port notebook)
+   (ein:$notebook-notebook-path notebook)
+   (lambda (content)
+     (ein:notebook-auto-revert--reload-callback notebook content))))
+
+(defun ein:notebook-auto-revert--reload-callback (notebook content)
+  (let* ((raw (ein:$content-raw-content content))
+         (ws (car (ein:$notebook-worksheets notebook)))
+         (buffer (and ws (ein:worksheet-buffer ws))))
+    (when (and ws (buffer-live-p buffer))
+      (with-current-buffer buffer
+        (let ((inhibit-read-only t)
+              (ewoc (ein:worksheet--ewoc ws)))
+          (ewoc-filter ewoc (lambda (_) nil))
+          (setf (ein:$notebook-metadata notebook) (plist-get raw :metadata)
+                (ein:$notebook-nbformat notebook) (plist-get raw :nbformat)
+                (ein:$notebook-nbformat-minor notebook) (plist-get raw :nbformat_minor))
+          (ein:worksheet-from-json ws raw)
+          (setq ein:%worksheet% ws)
+          (ein:worksheet-render ws)
+          (set-buffer-modified-p nil)
+          (ein:log 'info "Notebook %s auto-reverted"
+                   (ein:$notebook-notebook-name notebook)))))))
 
 (provide 'ein-notebook)
 

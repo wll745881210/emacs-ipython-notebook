@@ -155,7 +155,9 @@
   events
   worksheets
   scratchsheets
-  api-version)
+  api-version
+  auto-revert-watch
+  auto-revert-timer)
 
 
 ;;; Worksheet

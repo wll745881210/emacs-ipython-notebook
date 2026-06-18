@@ -30,8 +30,10 @@
 (require 'ein-core)
 (require 'ein-log)
 
-(defcustom ein:query-timeout 10000
-  "Default query timeout for HTTP access in millisecond."
+(defcustom ein:query-timeout 60000
+  "Default query timeout for HTTP access in millisecond.
+Increased from 10000 to 60000 for large notebooks with embedded figures
+(base64-encoded images in output areas)."
   :type '(choice (integer :tag "Timeout [ms]" 1000)
                  (const :tag "No timeout" nil))
   :group 'ein)
