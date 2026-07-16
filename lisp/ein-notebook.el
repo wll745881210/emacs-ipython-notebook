@@ -619,6 +619,8 @@ NAME is any non-empty string that does not contain '/' or '\\'.
 
 (defun ein:notebook-kill-buffers (notebook)
   "Callback for `ein:notebook-close'"
+  (awhen (ein:$notebook-kernel notebook)
+    (ein:kernel-disconnect it))
   (let ((buffers (ein:notebook-buffer-list notebook)))
     (mapc (lambda (b)
             (with-current-buffer b
