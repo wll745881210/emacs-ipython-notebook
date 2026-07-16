@@ -72,19 +72,39 @@ earlier calls to `request' (request.el)."
 
 (defun ein:websocket (url kernel on-message on-close on-open)
   (ein:websocket--prepare-cookies (ein:$kernel-ws-url kernel))
-  (let* ((ws (apply #'websocket-open url
-                    (append
-                     (when (>= (ein:$kernel-api-version kernel) 3)
-                       (list :protocols '("v1.kernel.websocket.jupyter.org")))
-                     (list :on-open on-open
-                           :on-message on-message
-                           :on-close on-close
-                           :on-error (lambda (ws action err)
-                                       (ein:log 'info "WS action [%s] %s (%s)"
-                                                err action (websocket-url ws)))))))
-         (websocket (make-ein:$websocket :ws ws :kernel kernel :closed-by-client nil)))
-    (setf (websocket-client-data ws) websocket)
-    websocket))
+  (let* ((ew (make-ein:$websocket :ws nil :kernel kernel :closed-by-client nil))
+         (v1-protos '("v1.kernel.websocket.jupyter.org"))
+         (try-v1 (>= (ein:$kernel-api-version kernel) 3)))
+    (cl-labels ((do-connect (protos)
+                  (let ((ws (apply #'websocket-open url
+                                   (append
+                                    (when protos
+                                      (list :protocols protos))
+                                    (list :on-open
+                                          (lambda (w)
+                                            (if (eql (websocket-ready-state w) 'open)
+                                                (funcall on-open w)
+                                              (unless protos
+                                                (funcall on-open w))
+                                              (when protos
+                                                (ein:log 'info
+                                                  "WS: v1 protocol rejected, retrying without")
+                                                (do-connect nil))))
+                                          :on-message on-message
+                                          :on-close
+                                          (lambda (w)
+                                            (when (eq w (ein:$websocket-ws ew))
+                                              (funcall on-close w)))
+                                          :on-error
+                                          (lambda (ws action err)
+                                            (ein:log 'info
+                                              "WS action [%s] %s (%s)"
+                                              err action
+                                              (websocket-url ws))))))))
+                    (setf (ein:$websocket-ws ew) ws)
+                    (setf (websocket-client-data ws) ew))))
+      (do-connect (when try-v1 v1-protos))
+      ew)))
 
 (defun ein:websocket-open-p (websocket)
   (eql (websocket-ready-state (ein:$websocket-ws websocket)) 'open))
