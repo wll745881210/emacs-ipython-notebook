@@ -369,15 +369,15 @@ But `C-x b` seems to consult `buffer-list' and not the C (window)->prev_buffers.
   (setq-local font-lock-dont-widen t)
   (setq-local syntax-propertize-chunks 0) ;; internal--syntax-propertize too far
   ;; (add-hook 'window-buffer-change-functions #'poly-ein--record-window-buffer nil nil)
-  (add-hook 'ido-make-buffer-list-hook
-	    (lambda ()
-	      (defvar ido-temp-list)
-	      (when-let ((visible (buffer-name)))
-		(ido-to-end (delq nil
-				  (mapcar (lambda (x)
-					    (when (string-prefix-p x visible) x))
-					  ido-temp-list)))))
-	    nil t)
+  ;; (add-hook 'ido-make-buffer-list-hook
+  ;;           (lambda ()
+  ;;             (defvar ido-temp-list)
+  ;;             (when-let ((visible (buffer-name)))
+  ;;               (ido-to-end (delq nil
+  ;;                                 (mapcar (lambda (x)
+  ;;                                           (when (string-prefix-p x visible) x))
+  ;;                                         ido-temp-list)))))
+  ;;           nil t)
   (ein:notebook-mode)
   (unless (eq 'ein:notebook-mode (caar minor-mode-map-alist))
     ;; move `ein:notebook-mode' to the head of `minor-mode-map-alist'
