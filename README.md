@@ -105,6 +105,15 @@ Jupyter Server >= 2.x uses the v1.kernel.websocket.jupyter.org subprotocol with 
 - **File:** `lisp/ein-log.el`
 - Removed `(interactive)` from `ein:log-pop-to-ws-buffer`, `ein:log-pop-to-request-buffer`, and `ein:log-pop-to-all-buffer`. These debug utilities no longer clutter M-x completion when typing `ein:login`.
 
+### 10. Fix ido-kill-buffer and kill-buffer default buffers
+
+`poly-ein.el` had two hooks that aggressively manipulated the frame buffer-list, corrupting it to the point where `ido-kill-buffer` and `C-x k` would default to random buffers (like `*Messages*` or `*ein:log-all*`) instead of the current notebook.
+
+- **File:** `lisp/poly-ein.el`
+- Disabled `poly-ein--record-window-buffer` (was on `buffer-list-update-hook` then `window-buffer-change-functions`) — it moved the base buffer to the front of the frame buffer-list after **every command**, corrupting the ordering for `ido-kill-buffer` defaults which use `(cadr (buffer-list))`.
+- Disabled the `ido-make-buffer-list-hook` lambda — it moved the base buffer to the **end** of `ido-temp-list`, making a random buffer the default.
+- With both hooks removed, Emacs' natural buffer-list ordering is preserved and `ido-kill-buffer` correctly defaults to the current notebook buffer.
+
 ## Configuration tips
 
 If you launch Jupyter with `c.ServerApp.token = ''` (no auth), you may also want:
