@@ -634,16 +634,9 @@ NAME is any non-empty string that does not contain '/' or '\\'.
     (ein:notebook-auto-revert-teardown notebook)))
 
 (defun ein:notebook-kill-buffer-query ()
-  (message "EIN-DEBUG kill-buffer-query in %s, notebook=%s ws=%s"
-           (buffer-name) (ein:get-notebook) (bound-and-true-p ein:%worksheet%))
-  (ein:log 'verbose "ein:notebook-kill-buffer-query: called in %s, ein:get-notebook=%s ein:%%worksheet%%=%s"
-           (buffer-name) (ein:get-notebook) (bound-and-true-p ein:%worksheet%))
   (if-let ((notebook (ein:get-notebook))
            (ws ein:%worksheet%))
-      (progn
-        (message "EIN-DEBUG blocking kill, closing notebook %s" (ein:$notebook-notebook-name notebook))
-        (ein:log 'verbose "ein:notebook-kill-buffer-query: blocking kill, calling ein:notebook-close for %s"
-                 (ein:$notebook-notebook-name notebook))
+      (prog1 nil
         (cond ((ein:scratchsheet-p ws)
                (ein:notebook-close-worksheet notebook ws)
                (awhen (ein:worksheet-buffer ws)
@@ -652,9 +645,7 @@ NAME is any non-empty string that does not contain '/' or '\\'.
                     (mapc (lambda (b) (ignore-errors (kill-buffer b))) (eieio-oref pm/polymode '-buffers))))))
               (t
                (cl-assert (ein:worksheet-p ws))
-               (ein:notebook-close notebook)))
-        nil)
-    (message "EIN-DEBUG allowing kill (notebook or ws is nil)")
+               (ein:notebook-close notebook))))
     t))
 
 (defun ein:notebook-ask-save (notebook &optional callback0)
