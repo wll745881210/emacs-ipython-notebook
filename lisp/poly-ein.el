@@ -350,16 +350,17 @@ TYPE can be \\='body, nil."
     (add-function :around (local 'font-lock-syntactic-face-function)
                   (apply-partially #'poly-ein--narrow-to-inner #'identity))))
 
-(defun poly-ein--record-window-buffer (&optional _frame)
-  "(buffer-name) needs to get onto window's prev-buffers.
-But `C-x b` seems to consult `buffer-list' and not the C (window)->prev_buffers."
-  (when (buffer-base-buffer)
-    (let* ((buffer-list (frame-parameter nil 'buffer-list))
-           (base-buf (buffer-base-buffer))
-           (pos (cl-position base-buf buffer-list)))
-      (when (and pos (> pos 1))
-        (set-frame-parameter nil 'buffer-list
-                             (cons base-buf (delq base-buf buffer-list)))))))
+;; poly-ein--record-window-buffer is currently disabled (see README section 10).
+;; (defun poly-ein--record-window-buffer (&optional _frame)
+;;   "(buffer-name) needs to get onto window's prev-buffers.
+;; But `C-x b` seems to consult `buffer-list' and not the C (window)->prev_buffers."
+;;   (when (buffer-base-buffer)
+;;     (let* ((buffer-list (frame-parameter nil 'buffer-list))
+;;            (base-buf (buffer-base-buffer))
+;;            (pos (cl-position base-buf buffer-list)))
+;;       (when (and pos (> pos 1))
+;;         (set-frame-parameter nil 'buffer-list
+;;                              (cons base-buf (delq base-buf buffer-list)))))))
 
 (defun poly-ein-init-input-cell (_type)
   "Contrary to intuition, this inits the entire buffer of input cells
@@ -368,16 +369,9 @@ But `C-x b` seems to consult `buffer-list' and not the C (window)->prev_buffers.
         (buffer-local-value 'after-change-functions (pm-base-buffer)))
   (setq-local font-lock-dont-widen t)
   (setq-local syntax-propertize-chunks 0) ;; internal--syntax-propertize too far
-  ;; (add-hook 'window-buffer-change-functions #'poly-ein--record-window-buffer nil nil)
-  ;; (add-hook 'ido-make-buffer-list-hook
-  ;;           (lambda ()
-  ;;             (defvar ido-temp-list)
-  ;;             (when-let ((visible (buffer-name)))
-  ;;               (ido-to-end (delq nil
-  ;;                                 (mapcar (lambda (x)
-  ;;                                           (when (string-prefix-p x visible) x))
-  ;;                                         ido-temp-list)))))
-  ;;           nil t)
+  ;; NOTE: poly-ein--record-window-buffer and ido-make-buffer-list-hook
+  ;; were removed — they corrupted the frame buffer-list, breaking
+  ;; ido-kill-buffer and kill-buffer defaults (see README section 10).
   (ein:notebook-mode)
   (unless (eq 'ein:notebook-mode (caar minor-mode-map-alist))
     ;; move `ein:notebook-mode' to the head of `minor-mode-map-alist'

@@ -95,10 +95,6 @@ Jupyter Server >= 2.x uses the v1.kernel.websocket.jupyter.org subprotocol with 
 - **File:** `lisp/ein-notebook.el`
 - `ein:notebook-kill-buffers` now calls `ein:kernel-disconnect` before killing buffers, ensuring the WebSocket is cleanly closed with `closed-by-client` set, preventing re-entrant kernel disconnect from the process sentinel.
 - `ein:notebook-kill-buffer-query` checks `buffer-base-buffer` for `ein:%notebook%` and `ein:%worksheet%`, so killing a polymode `[python]` child buffer with `C-x k` correctly triggers `ein:notebook-close` instead of silently failing.
-- `ein:notebook-kill-buffer-command` is provided as an opt-in `C-x k` replacement with a confirmation prompt like the original `kill-buffer`. Bind it in your config:
-  ```elisp
-  (define-key ein:notebook-mode-map (kbd "C-x k") 'ein:notebook-kill-buffer-command)
-  ```
 
 ### 9. Cleaner M-x completion
 
