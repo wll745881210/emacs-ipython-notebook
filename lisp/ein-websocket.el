@@ -87,8 +87,6 @@ earlier calls to `request' (request.el)."
                                                   (when protos
                                                     (setf (ein:$websocket-v1-protocol ew) t))
                                                   (funcall on-open w))
-                                              (unless protos
-                                                (funcall on-open w))
                                               (when protos
                                                 (ein:log 'info
                                                   "WS: v1 protocol rejected, retrying without")
@@ -96,8 +94,9 @@ earlier calls to `request' (request.el)."
                                           :on-message on-message
                                           :on-close
                                           (lambda (w)
-                                            (when (eq w (ein:$websocket-ws ew))
-                                              (funcall on-close w)))
+                                            (unless protos
+                                              (when (eq w (ein:$websocket-ws ew))
+                                                (funcall on-close w))))
                                           :on-error
                                           (lambda (ws action err)
                                             (ein:log 'info
