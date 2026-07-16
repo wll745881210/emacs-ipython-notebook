@@ -83,7 +83,10 @@ earlier calls to `request' (request.el)."
                                     (list :on-open
                                           (lambda (w)
                                             (if (eql (websocket-ready-state w) 'open)
-                                                (funcall on-open w)
+                                                (progn
+                                                  (when protos
+                                                    (setf (ein:$websocket-v1-protocol ew) t))
+                                                  (funcall on-open w))
                                               (unless protos
                                                 (funcall on-open w))
                                               (when protos
@@ -149,14 +152,22 @@ MSG is a plist with :header, :parent_header, :metadata, :content, :channel."
          (ein:websocket-send
           (ein:$kernel-shell-channel kernel)
           (ein:json-encode msg)))
-        ((>= (ein:$kernel-api-version kernel) 3)
-         (ein:websocket-send-binary kernel (plist-put msg :channel "shell")))))
+        ((ein:$websocket-v1-protocol (ein:$kernel-websocket kernel))
+         (ein:websocket-send-binary kernel (plist-put msg :channel "shell")))
+        (t
+         (ein:websocket-send
+          (ein:$kernel-websocket kernel)
+          (ein:json-encode msg)))))
 
 (defun ein:websocket-send-stdin-channel (kernel msg)
   (cond ((= (ein:$kernel-api-version kernel) 2)
          (ein:log 'warn "Stdin messages only supported with IPython 3."))
-        ((>= (ein:$kernel-api-version kernel) 3)
-         (ein:websocket-send-binary kernel (plist-put msg :channel "stdin")))))
+        ((ein:$websocket-v1-protocol (ein:$kernel-websocket kernel))
+         (ein:websocket-send-binary kernel (plist-put msg :channel "stdin")))
+        (t
+         (ein:websocket-send
+          (ein:$kernel-websocket kernel)
+          (ein:json-encode msg)))))
 
 (provide 'ein-websocket)
 

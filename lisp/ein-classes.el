@@ -82,11 +82,13 @@
 
 `ein:$websocket-ws'               : an instance returned by `websocket-open'
 `ein:$websocket-kernel'           : kernel at the time of instantiation
-`ein:$websocket-closed-by-client' : t/nil'
+`ein:$websocket-closed-by-client' : t/nil
+`ein:$websocket-v1-protocol'      : t if using v1.kernel.websocket subprotocol'
 "
   ws
   kernel
-  closed-by-client)
+  closed-by-client
+  v1-protocol)
 
 ;;; Notebook
 (cl-defstruct ein:$notebook
