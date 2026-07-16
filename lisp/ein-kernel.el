@@ -314,7 +314,11 @@ See https://github.com/ipython/ipython/pull/3307"
                (error
                 (ein:log 'warn "WS: failed to dispatch decoded binary: %s"
                          (error-message-string err2))))
-           (ein:log 'warn "WS: binary decode also failed")))))))
+           (condition-case nil
+               (ein:kernel--dispatch-packet
+                kernel (decode-coding-string payload 'utf-8))
+             (error
+              (ein:log 'warn "WS: binary decode also failed")))))))))
 
 (defun ein:kernel--binary-frame-to-json (packet)
   "Decode a binary WebSocket frame (8-byte little-endian offset headers).
