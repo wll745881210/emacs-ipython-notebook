@@ -80,6 +80,31 @@ Add a Running Notebooks section at the top of the notebooklist buffer (like Jupy
 - Works with the existing widget-based notebooklist UI.
 - Interrupt and Switch actions available only for notebooks open in Emacs.
 
+### 7. WebSocket v1 binary protocol (Jupyter Server >= 2.x vs classic Notebook)
+
+Jupyter Server >= 2.x uses the v1.kernel.websocket.jupyter.org subprotocol with binary message framing. Classic Notebook (pre-7.x) expects plain TEXT JSON frames. This fork detects the server type and uses the correct protocol for each.
+
+- **Files:** `lisp/ein-websocket.el`, `lisp/ein-query.el`
+- `GET /api/status` is tried before `api/spec.yaml` for version detection.
+- The `api/spec.yaml` response title is checked for `"Jupyter Server API"`; if found, `api-version` is bumped to `6`, which enables v1 binary protocol. Classic Notebook stays at `api-version 5` and uses TEXT JSON frames.
+- v1 subprotocol retry (v1 → TEXT) is skipped for classic Notebook, avoiding a second WebSocket connection that the old server rejects.
+- TEXT fallback in `ein:websocket-send-shell-channel` and `ein:websocket-send-stdin-channel` now correctly includes the `:channel` field in the JSON payload.
+
+### 8. Buffer kill fixes
+
+- **File:** `lisp/ein-notebook.el`
+- `ein:notebook-kill-buffers` now calls `ein:kernel-disconnect` before killing buffers, ensuring the WebSocket is cleanly closed with `closed-by-client` set, preventing re-entrant kernel disconnect from the process sentinel.
+- `ein:notebook-kill-buffer-query` checks `buffer-base-buffer` for `ein:%notebook%` and `ein:%worksheet%`, so killing a polymode `[python]` child buffer with `C-x k` correctly triggers `ein:notebook-close` instead of silently failing.
+- `ein:notebook-kill-buffer-command` is provided as an opt-in `C-x k` replacement with a confirmation prompt like the original `kill-buffer`. Bind it in your config:
+  ```elisp
+  (define-key ein:notebook-mode-map (kbd "C-x k") 'ein:notebook-kill-buffer-command)
+  ```
+
+### 9. Cleaner M-x completion
+
+- **File:** `lisp/ein-log.el`
+- Removed `(interactive)` from `ein:log-pop-to-ws-buffer`, `ein:log-pop-to-request-buffer`, and `ein:log-pop-to-all-buffer`. These debug utilities no longer clutter M-x completion when typing `ein:login`.
+
 ## Configuration tips
 
 If you launch Jupyter with `c.ServerApp.token = ''` (no auth), you may also want:
