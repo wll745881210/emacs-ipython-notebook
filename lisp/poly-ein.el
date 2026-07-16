@@ -350,15 +350,14 @@ TYPE can be \\='body, nil."
     (add-function :around (local 'font-lock-syntactic-face-function)
                   (apply-partially #'poly-ein--narrow-to-inner #'identity))))
 
-(defun poly-ein--record-window-buffer ()
+(defun poly-ein--record-window-buffer (&optional _frame)
   "(buffer-name) needs to get onto window's prev-buffers.
 But `C-x b` seems to consult `buffer-list' and not the C (window)->prev_buffers."
-  (when (and (buffer-base-buffer)
-             (eq (current-buffer) (window-buffer (selected-window))))
+  (when (buffer-base-buffer)
     (let* ((buffer-list (frame-parameter nil 'buffer-list))
-           (base-buf (buffer-base-buffer)))
-      (when (and (car (memq base-buf buffer-list))
-                 (> (length (memq base-buf buffer-list)) 2))
+           (base-buf (buffer-base-buffer))
+           (pos (cl-position base-buf buffer-list)))
+      (when (and pos (> pos 1))
         (set-frame-parameter nil 'buffer-list
                              (cons base-buf (delq base-buf buffer-list)))))))
 
@@ -369,7 +368,7 @@ But `C-x b` seems to consult `buffer-list' and not the C (window)->prev_buffers.
         (buffer-local-value 'after-change-functions (pm-base-buffer)))
   (setq-local font-lock-dont-widen t)
   (setq-local syntax-propertize-chunks 0) ;; internal--syntax-propertize too far
-  (add-hook 'buffer-list-update-hook #'poly-ein--record-window-buffer nil t)
+  (add-hook 'window-buffer-change-functions #'poly-ein--record-window-buffer nil t)
   (add-hook 'ido-make-buffer-list-hook
 	    (lambda ()
 	      (defvar ido-temp-list)
