@@ -205,12 +205,17 @@ Tries /api/status first (Jupyter Server >= 2.x), falls back to api/spec.yaml
   (ein:query-singleton-ajax
    (ein:url url-or-port "api/spec.yaml")
    :parser (lambda ()
-             (if (re-search-forward "api\\s-+version: \\(\\S-+\\)"
-                                    nil t)
-                 (string-remove-prefix
-                  "\"" (string-remove-suffix
-                        "\"" (match-string-no-properties 1)))
-               ""))
+             (let ((server-p (save-excursion
+                              (goto-char (point-min))
+                              (re-search-forward "Jupyter Server API" nil t))))
+               (if server-p
+                   "6"
+                 (if (re-search-forward "api\\s-+version: \\(\\S-+\\)"
+                                        nil t)
+                     (string-remove-prefix
+                      "\"" (string-remove-suffix
+                            "\"" (match-string-no-properties 1)))
+                   ""))))
    :complete (apply-partially #'ein:query-notebook-api-version--complete
                               url-or-port callback)))
 
