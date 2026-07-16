@@ -860,6 +860,7 @@ compilation issue."
   (ein:notebook--define-key map "\C-c\C-o" ein:notebook-open)
   (ein:notebook--define-key map "\C-x\C-s" ein:notebook-save-notebook-command)
   (ein:notebook--define-key map "\C-x\C-w" ein:notebook-rename-command)
+  (ein:notebook--define-key map "\C-xk"   ein:notebook-close)
   (define-key map "\M-."          'ein:pytools-jump-to-source-command)
   (define-key map "\M-,"          'ein:pytools-jump-back-command)
   (ein:notebook--define-key map (kbd "C-c C-/") ein:notebook-scratchsheet-open)
