@@ -154,7 +154,7 @@ MSG is a plist with :header, :parent_header, :metadata, :content, :channel."
         (t
          (ein:websocket-send
           (ein:$kernel-websocket kernel)
-          (ein:json-encode (plist-put msg :channel "shell")))))))
+          (ein:json-encode (plist-put msg :channel "shell"))))))
 
 (defun ein:websocket-send-stdin-channel (kernel msg)
   (cond ((= (ein:$kernel-api-version kernel) 2)
