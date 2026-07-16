@@ -145,21 +145,16 @@ MSG is a plist with :header, :parent_header, :metadata, :content, :channel."
 
 
 (defun ein:websocket-send-shell-channel (kernel msg)
-  (let ((ws-obj (ein:$kernel-websocket kernel)))
-    (ein:log 'info "WS: shell-send api=%s v1p=%s ws-obj=%s"
-             (ein:$kernel-api-version kernel)
-             (and ws-obj (ein:$websocket-v1-protocol ws-obj))
-             (if ws-obj "non-nil" "nil"))
-    (cond ((= (ein:$kernel-api-version kernel) 2)
-           (ein:websocket-send
-            (ein:$kernel-shell-channel kernel)
-            (ein:json-encode msg)))
-          ((ein:$websocket-v1-protocol (ein:$kernel-websocket kernel))
-           (ein:websocket-send-binary kernel (plist-put msg :channel "shell")))
-          (t
-           (ein:websocket-send
-            (ein:$kernel-websocket kernel)
-            (ein:json-encode msg))))))
+  (cond ((= (ein:$kernel-api-version kernel) 2)
+         (ein:websocket-send
+          (ein:$kernel-shell-channel kernel)
+          (ein:json-encode msg)))
+        ((ein:$websocket-v1-protocol (ein:$kernel-websocket kernel))
+         (ein:websocket-send-binary kernel (plist-put msg :channel "shell")))
+        (t
+         (ein:websocket-send
+          (ein:$kernel-websocket kernel)
+          (ein:json-encode (plist-put msg :channel "shell")))))))
 
 (defun ein:websocket-send-stdin-channel (kernel msg)
   (cond ((= (ein:$kernel-api-version kernel) 2)
