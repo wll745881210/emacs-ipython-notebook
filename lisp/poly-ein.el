@@ -353,23 +353,14 @@ TYPE can be \\='body, nil."
 (defun poly-ein--record-window-buffer ()
   "(buffer-name) needs to get onto window's prev-buffers.
 But `C-x b` seems to consult `buffer-list' and not the C (window)->prev_buffers."
-  (when (buffer-base-buffer)
+  (when (and (buffer-base-buffer)
+             (eq (current-buffer) (window-buffer (selected-window))))
     (let* ((buffer-list (frame-parameter nil 'buffer-list))
-           (pos-visible (seq-position
-                         buffer-list
-                         (buffer-name)
-                         (lambda (x visible*)
-                           (string-prefix-p (buffer-name x) visible*)))))
-      ;; no way to know if i've switched in or out of indirect buf.
-      ;; (if in, I *don't* want to add visible to buffer-list)
-      (cond ((and (numberp pos-visible) (> pos-visible 0))
-             (let ((visible-buffer (nth pos-visible buffer-list)))
-               (setcdr (nthcdr (1- pos-visible) buffer-list)
-                       (nthcdr (1+ pos-visible) buffer-list))
-               (set-frame-parameter nil 'buffer-list (cons visible-buffer buffer-list))))
-            ((null pos-visible)
-             (set-frame-parameter nil 'buffer-list
-                                  (cons (buffer-base-buffer) buffer-list)))))))
+           (base-buf (buffer-base-buffer)))
+      (when (and (car (memq base-buf buffer-list))
+                 (> (length (memq base-buf buffer-list)) 2))
+        (set-frame-parameter nil 'buffer-list
+                             (cons base-buf (delq base-buf buffer-list)))))))
 
 (defun poly-ein-init-input-cell (_type)
   "Contrary to intuition, this inits the entire buffer of input cells
