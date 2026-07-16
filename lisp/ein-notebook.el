@@ -684,6 +684,20 @@ NAME is any non-empty string that does not contain '/' or '\\'.
                     (apply #'apply-partially callback cbargs)))
     (ein:notebook-ask-save notebook callback0)))
 
+(defun ein:notebook-kill-buffer-command ()
+  "Kill the current notebook buffer with confirmation, like `kill-buffer'."
+  (interactive)
+  (let ((nb (or (ein:get-notebook)
+                (and (buffer-base-buffer)
+                     (buffer-local-value 'ein:%notebook%
+                                         (buffer-base-buffer))))))
+    (if nb
+        (let ((name (ein:$notebook-notebook-name nb)))
+          (when (or (null (ein:notebook-modified-p nb))
+                    (y-or-n-p (format "Buffer %s modified; kill anyway? " name)))
+            (ein:notebook-close nb)))
+      (call-interactively #'kill-buffer))))
+
 (defun ein:notebook-kill-kernel-then-close-command (notebook &optional callback1)
   "Kill kernel and then kill notebook buffer.
 To close notebook without killing kernel, just close the buffer
@@ -860,7 +874,7 @@ compilation issue."
   (ein:notebook--define-key map "\C-c\C-o" ein:notebook-open)
   (ein:notebook--define-key map "\C-x\C-s" ein:notebook-save-notebook-command)
   (ein:notebook--define-key map "\C-x\C-w" ein:notebook-rename-command)
-  (ein:notebook--define-key map "\C-xk"   ein:notebook-close)
+  (ein:notebook--define-key map "\C-xk"   ein:notebook-kill-buffer-command)
   (define-key map "\M-."          'ein:pytools-jump-to-source-command)
   (define-key map "\M-,"          'ein:pytools-jump-back-command)
   (ein:notebook--define-key map (kbd "C-c C-/") ein:notebook-scratchsheet-open)

@@ -93,7 +93,6 @@ Change the behavior of `ein:log-ignore-errors'."
   (>= ein:log-level (alist-get 'debug ein:log-level-def)))
 
 (defun ein:log-pop-to-ws-buffer ()
-  (interactive)
   (-if-let* ((kernel (ein:get-kernel--notebook))
              (websocket (ein:$kernel-websocket kernel)))
       (pop-to-buffer
@@ -102,13 +101,11 @@ Change the behavior of `ein:log-ignore-errors'."
     (message "Must be run from notebook buffer")))
 
 (defun ein:log-pop-to-request-buffer ()
-  (interactive)
   (aif (get-buffer request-log-buffer-name)
       (pop-to-buffer it)
     (message "No buffer %s" request-log-buffer-name)))
 
 (defun ein:log-pop-to-all-buffer ()
-  (interactive)
   (pop-to-buffer (get-buffer-create ein:log-all-buffer-name)))
 
 (provide 'ein-log)
