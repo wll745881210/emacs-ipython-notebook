@@ -33,10 +33,51 @@
 (require 'ein-core)
 (require 'ein-classes)
 (require 'ein-log)
+
+(defun ein:kernel--pack-le64 (val)
+  "Pack VAL into an 8-byte little-endian unibyte string."
+  (unibyte-string (logand val 255)
+                  (logand (ash val -8) 255)
+                  (logand (ash val -16) 255)
+                  (logand (ash val -24) 255)
+                  (logand (ash val -32) 255)
+                  (logand (ash val -40) 255)
+                  (logand (ash val -48) 255)
+                  (logand (ash val -56) 255)))
+
+(defun ein:kernel--encode-v1-binary (channel header-json parent-header-json metadata-json content-json)
+  "Encode a Jupyter message as a v1 binary WebSocket frame payload.
+CHANNEL is a string like \"shell\" or \"stdin\".
+HEADER-JSON, PARENT-HEADER-JSON, METADATA-JSON, CONTENT-JSON are JSON strings.
+Returns a unibyte string."
+  (let* ((channel-bytes (encode-coding-string channel 'utf-8 t))
+         (header-bytes (encode-coding-string header-json 'utf-8 t))
+         (parent-bytes (encode-coding-string parent-header-json 'utf-8 t))
+         (metadata-bytes (encode-coding-string metadata-json 'utf-8 t))
+         (content-bytes (encode-coding-string content-json 'utf-8 t))
+         (parts (list channel-bytes header-bytes parent-bytes
+                      metadata-bytes content-bytes))
+         (num-parts (length parts))
+         (offset-count (1+ num-parts))
+         (header-size (* 8 (1+ offset-count)))
+         (offsets (let ((pos header-size)
+                        (result (list header-size)))
+                    (dolist (part parts)
+                      (setq pos (+ pos (length part)))
+                      (push pos result))
+                    (nreverse result)))
+         (result (ein:kernel--pack-le64 offset-count)))
+    (dolist (off offsets)
+      (setq result (concat result (ein:kernel--pack-le64 off))))
+    (concat result channel-bytes header-bytes parent-bytes
+            metadata-bytes content-bytes)))
+
 (require 'ein-websocket)
 (require 'ein-events)
 (require 'ein-query)
 (require 'ein-ipdb)
+
+(declare-function ein:jupyter-crib-token "ein-jupyter")
 
 (declare-function ein:notebook-get-opened-notebook "ein-notebook")
 (declare-function ein:notebooklist-get-buffer "ein-notebooklist")
@@ -162,11 +203,8 @@ CALLBACK of arity 1, the kernel."
        (ein:url (ein:$kernel-url-or-port kernel) "api/sessions")
        :type "POST"
        :data (ein:json-encode
-              `((path . ,path)
-                ,@(if (ein:query-api-version--jupyter-server-p
-                       (ein:$kernel-url-or-port kernel))
-                      nil
-                    `((type . "notebook")))
+               `((path . ,path)
+                 (type . "notebook")
                 ,@(if kernelspec
                       `((kernel .
                                 ((name . ,(ein:$kernelspec-name kernelspec))
@@ -237,30 +275,102 @@ we're reconnected)."
   "Assuming URL-OR-PORT already normalized by `ein:url'.
 See https://github.com/ipython/ipython/pull/3307"
   (let* ((parsed-url (url-generic-parse-url url-or-port))
-         (protocol (if (string= (url-type parsed-url) "https") "wss" "ws")))
+         (protocol (if (string= (url-type parsed-url) "https") "wss" "ws"))
+         (path (url-filename parsed-url)))
+    (when (string-match "\\?" path)
+      (setq path (substring path 0 (match-beginning 0))))
     (format "%s://%s:%s%s"
             protocol
             (url-host parsed-url)
             (url-port parsed-url)
-            (url-filename parsed-url))))
+            path)))
 
-(defun ein:kernel--handle-websocket-reply (kernel _ws frame)
-  (-when-let* ((packet (websocket-frame-payload frame))
-               (channel (plist-get (ein:json-read-from-string packet) :channel)))
+(defun ein:kernel--token-from-url (url-or-port)
+  (let* ((parsed (url-generic-parse-url url-or-port))
+         (filename (url-filename parsed)))
+    (when (string-match "\\?" filename)
+      (let ((query (url-parse-query-string (substring filename (match-end 0)))))
+        (cdr (assoc "token" query))))))
+
+(defun ein:kernel--dispatch-packet (kernel packet)
+  (-when-let (channel (plist-get (ein:json-read-from-string packet) :channel))
     (cond ((string-equal channel "iopub")
            (ein:kernel--handle-iopub-reply kernel packet))
           ((string-equal channel "shell")
            (ein:kernel--handle-shell-reply kernel packet))
           ((string-equal channel "stdin")
            (ein:kernel--handle-stdin-reply kernel packet))
-          (t (ein:log 'warn "Received reply from unforeseen channel %s" channel)))))
+          (t (ein:log 'warn "WS: unforeseen channel %s" channel)))))
+
+(defun ein:kernel--handle-websocket-reply (kernel _ws frame)
+  (let* ((payload (websocket-frame-payload frame)))
+    (condition-case err
+        (ein:kernel--dispatch-packet kernel payload)
+      (error
+       (let ((json (ein:kernel--binary-frame-to-json payload)))
+         (if json
+             (condition-case err2
+                 (ein:kernel--dispatch-packet kernel json)
+               (error
+                (ein:log 'warn "WS: failed to dispatch decoded binary: %s"
+                         (error-message-string err2))))
+           (ein:log 'warn "WS: binary decode also failed")))))))
+
+(defun ein:kernel--binary-frame-to-json (packet)
+  "Decode a binary WebSocket frame (8-byte little-endian offset headers).
+Returns JSON string or nil."
+  (condition-case nil
+      (let* ((len (length packet))
+             (offset-count (ein:kernel--read-le32 packet 0)))
+        (when (and (> offset-count 2) (<= offset-count 20)
+                   (>= len (+ 8 (* offset-count 8))))
+          (let* ((offsets (cl-loop for i from 0 to (1- offset-count)
+                                   for off = (+ 8 (* 8 i))
+                                   collect (ein:kernel--read-le32 packet off)))
+                 (channel-start (nth 0 offsets))
+                 (channel-end (nth 1 offsets))
+                 (channel (decode-coding-string
+                           (substring packet channel-start channel-end)
+                           'utf-8))
+                 (parts (cl-loop for i from 1 to (- offset-count 2)
+                                 collect (decode-coding-string
+                                          (substring packet
+                                                     (nth i offsets)
+                                                     (nth (1+ i) offsets))
+                                          'utf-8))))
+            (format "{\"channel\":\"%s\",\"header\":%s,\"parent_header\":%s,\"metadata\":%s,\"content\":%s}"
+                    (ein:kernel--json-escape channel)
+                    (or (nth 0 parts) "{}")
+                    (or (nth 1 parts) "{}")
+                    (or (nth 2 parts) "{}")
+                    (or (nth 3 parts) "{}")))))
+    (error nil)))
+
+(defun ein:kernel--read-le32 (string pos)
+  (+ (ash (aref string (+ pos 3)) 24)
+     (ash (aref string (+ pos 2)) 16)
+     (ash (aref string (+ pos 1)) 8)
+     (aref string pos)))
+
+(defun ein:kernel--json-escape (str)
+  (replace-regexp-in-string
+   "\"" "\\\\\""
+   (replace-regexp-in-string "\\\\" "\\\\\\\\" str)))
 
 (defun ein:start-single-websocket (kernel open-callback)
   "OPEN-CALLBACK (kernel) (e.g., execute cell)"
-  (let ((ws-url (concat (ein:$kernel-ws-url kernel)
+  (let* ((url-or-port (ein:$kernel-url-or-port kernel))
+         (token (or (ein:kernel--token-from-url url-or-port)
+                    (ignore-errors
+                      (cl-multiple-value-bind (password-p tok)
+                          (ein:jupyter-crib-token url-or-port)
+                        (unless password-p tok)))))
+         (ws-url (concat (ein:$kernel-ws-url kernel)
                          (ein:$kernel-kernel-url kernel)
                          "/channels?session_id="
-                         (ein:$kernel-session-id kernel))))
+                         (ein:$kernel-session-id kernel)
+                         (when token
+                           (concat "&token=" (url-hexify-string token))))))
     (ein:log 'verbose "WS start: %s" ws-url)
     (setf (ein:$kernel-websocket kernel)
           (ein:websocket ws-url kernel
@@ -276,10 +386,18 @@ See https://github.com/ipython/ipython/pull/3307"
                           (lambda (cb ws)
                             (-if-let* ((websocket (websocket-client-data ws))
                                        (kernel (ein:$websocket-kernel websocket)))
-                                (progn
-                                  (awhen (and (ein:kernel-live-p kernel) cb)
-                                    (funcall it kernel))
-                                  (ein:log 'verbose "WS opened: %s" (websocket-url ws)))
+                                 (progn
+                                   (awhen (and (ein:kernel-live-p kernel) cb)
+                                     (funcall it kernel))
+                                    (ein:log 'verbose "WS opened: %s" (websocket-url ws))
+                                   (if-let ((ws-obj (ein:$kernel-websocket kernel)))
+                                       (progn
+                                         (ein:log 'info "WS: sending kernel_info_request")
+                                         (ein:websocket-send-shell-channel
+                                          kernel
+                                          (ein:kernel--get-msg kernel "kernel_info_request"
+                                                               (make-hash-table))))
+                                     (ein:log 'warn "WS: no ein:$websocket for kernel, cannot send kernel_info_request")))
                               (ein:log 'error "ein:start-single-websocket: on-open no client data for %s." (websocket-url ws))))
                           open-callback)))))
 

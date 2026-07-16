@@ -31,6 +31,9 @@
 (require 'url-cookie)
 (require 'request)
 
+(declare-function ein:jupyter-crib-token "ein-jupyter")
+(declare-function ein:kernel--encode-v1-binary "ein-kernel")
+
 (defun ein:websocket-store-cookie (c host-port url-filename securep)
   (url-cookie-store (car c) (cdr c) nil host-port url-filename securep))
 
@@ -70,12 +73,13 @@ earlier calls to `request' (request.el)."
 (defun ein:websocket (url kernel on-message on-close on-open)
   (ein:websocket--prepare-cookies (ein:$kernel-ws-url kernel))
   (let* ((ws (websocket-open url
-                             :on-open on-open
-                             :on-message on-message
-                             :on-close on-close
-                             :on-error (lambda (ws action err)
-                                         (ein:log 'info "WS action [%s] %s (%s)"
-                                                  err action (websocket-url ws)))))
+                               :protocols '("v1.kernel.websocket.jupyter.org")
+                               :on-open on-open
+                               :on-message on-message
+                               :on-close on-close
+                               :on-error (lambda (ws action err)
+                                           (ein:log 'info "WS action [%s] %s (%s)"
+                                                    err action (websocket-url ws)))))
          (websocket (make-ein:$websocket :ws ws :kernel kernel :closed-by-client nil)))
     (setf (websocket-client-data ws) websocket)
     websocket))
@@ -90,6 +94,28 @@ earlier calls to `request' (request.el)."
       (websocket-send-text (ein:$websocket-ws websocket) text)
     (error (message "Error %s on sending websocket message %s." err text))))
 
+(defun ein:websocket-send-binary (kernel msg)
+  "Send MSG as a v1 binary frame on KERNEL's websocket.
+MSG is a plist with :header, :parent_header, :metadata, :content, :channel."
+  (let* ((channel (or (plist-get msg :channel) "shell"))
+         (header-json (ein:json-encode (plist-get msg :header)))
+         (parent-json (ein:json-encode (or (plist-get msg :parent_header)
+                                           (make-hash-table))))
+         (metadata-json (ein:json-encode (or (plist-get msg :metadata)
+                                             (make-hash-table))))
+         (content-json (ein:json-encode (or (plist-get msg :content)
+                                            (make-hash-table))))
+         (binary-data (ein:kernel--encode-v1-binary
+                       channel header-json parent-json metadata-json content-json))
+         (ws (ein:$kernel-websocket kernel)))
+     (ein:log 'debug "WS: sending binary ch=%s msg-type=%s (%d bytes)"
+              channel (plist-get (plist-get msg :header) :msg_type)
+              (length binary-data))
+     (websocket-send (ein:$websocket-ws ws)
+                    (make-websocket-frame :opcode 'binary
+                                          :payload binary-data
+                                          :completep t))))
+
 
 (defun ein:websocket-close (websocket)
   (setf (ein:$websocket-closed-by-client websocket) t)
@@ -102,17 +128,13 @@ earlier calls to `request' (request.el)."
           (ein:$kernel-shell-channel kernel)
           (ein:json-encode msg)))
         ((>= (ein:$kernel-api-version kernel) 3)
-         (ein:websocket-send
-          (ein:$kernel-websocket kernel)
-          (ein:json-encode (plist-put msg :channel "shell"))))))
+         (ein:websocket-send-binary kernel (plist-put msg :channel "shell")))))
 
 (defun ein:websocket-send-stdin-channel (kernel msg)
   (cond ((= (ein:$kernel-api-version kernel) 2)
          (ein:log 'warn "Stdin messages only supported with IPython 3."))
         ((>= (ein:$kernel-api-version kernel) 3)
-         (ein:websocket-send
-          (ein:$kernel-websocket kernel)
-          (ein:json-encode (plist-put msg :channel "stdin"))))))
+         (ein:websocket-send-binary kernel (plist-put msg :channel "stdin")))))
 
 (provide 'ein-websocket)
 
