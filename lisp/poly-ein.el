@@ -368,7 +368,7 @@ But `C-x b` seems to consult `buffer-list' and not the C (window)->prev_buffers.
         (buffer-local-value 'after-change-functions (pm-base-buffer)))
   (setq-local font-lock-dont-widen t)
   (setq-local syntax-propertize-chunks 0) ;; internal--syntax-propertize too far
-  (add-hook 'window-buffer-change-functions #'poly-ein--record-window-buffer nil t)
+  ;; (add-hook 'window-buffer-change-functions #'poly-ein--record-window-buffer nil nil)
   (add-hook 'ido-make-buffer-list-hook
 	    (lambda ()
 	      (defvar ido-temp-list)
