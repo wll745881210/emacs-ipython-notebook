@@ -634,8 +634,14 @@ NAME is any non-empty string that does not contain '/' or '\\'.
     (ein:notebook-auto-revert-teardown notebook)))
 
 (defun ein:notebook-kill-buffer-query ()
-  (if-let ((notebook (ein:get-notebook))
-           (ws ein:%worksheet%))
+  (if-let ((notebook (or (ein:get-notebook)
+                         (and (buffer-base-buffer)
+                              (buffer-local-value 'ein:%notebook%
+                                                  (buffer-base-buffer)))))
+           (ws (or ein:%worksheet%
+                   (and (buffer-base-buffer)
+                        (buffer-local-value 'ein:%worksheet%
+                                            (buffer-base-buffer))))))
       (prog1 nil
         (cond ((ein:scratchsheet-p ws)
                (ein:notebook-close-worksheet notebook ws)
