@@ -91,10 +91,9 @@ earlier calls to `request' (request.el)."
                                                 (do-connect nil))))
                                           :on-message on-message
                                           :on-close
-                                          (lambda (w)
-                                            (unless protos
-                                              (when (eq w (ein:$websocket-ws ew))
-                                                (funcall on-close w))))
+                                           (lambda (w)
+                                             (when (eq w (ein:$websocket-ws ew))
+                                               (funcall on-close w)))
                                           :on-error
                                           (lambda (ws action err)
                                             (ein:log 'info
